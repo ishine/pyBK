@@ -3,7 +3,7 @@
 # http://www.eurecom.fr/en/people/patino-jose
 # Contact: patino[at]eurecom[dot]fr, josempatinovillar[at]gmail[dot]com
 
-import os, sys
+import os, sys, glob
 import configparser
 from diarizationFunctions import *
 import numpy as np
@@ -11,7 +11,11 @@ import numpy as np
 def runDiarization(showName,config):      
     print('showName\t\t',showName)
     print('Extracting features')  
-    allData=extractFeatures(config['PATH']['audio']+showName+config['EXTENSION']['audio'],config.getfloat('FEATURES','framelength'),config.getfloat('FEATURES','frameshift'),config.getint('FEATURES','nfilters'),config.getint('FEATURES','ncoeff'))    
+    
+    if config.getint('GENERAL','performFeatureExtraction'):
+        allData=extractFeatures(config['PATH']['audio']+showName+config['EXTENSION']['audio'],config.getfloat('FEATURES','framelength'),config.getfloat('FEATURES','frameshift'),config.getint('FEATURES','nfilters'),config.getint('FEATURES','ncoeff'))    
+    else:
+        allData=getFeatures(config['PATH']['features']+showName+config['EXTENSION']['features'])
     nFeatures = allData.shape[0]    
     print('Initial number of features\t',nFeatures) 
     
@@ -102,10 +106,13 @@ if __name__ == "__main__":
     config = configparser.ConfigParser()
     config.read(configFile)
     
-    # Audio files are searched at the corresponding folder
-    showNameList=sorted(os.listdir(config['PATH']['audio']))
-    showNameList = ' '.join(showNameList).replace(config['EXTENSION']['audio'],'').split()
-
+    if config.getint('GENERAL','performFeatureExtraction'):
+        # Audio files are searched at the corresponding folder
+        showNameList = sorted(glob.glob(config['PATH']['audio']+'*'+config['EXTENSION']['audio']))
+    else:
+        # Feature files are searched if feature extraction is disabled:
+        showNameList = sorted(glob.glob(config['PATH']['features']+'*'+config['EXTENSION']['features']))
+        
     # If the output file already exists from a previous call it is deleted
     if os.path.isfile(config['PATH']['output']+config['EXPERIMENT']['name']+config['EXTENSION']['output']):
         os.remove(config['PATH']['output']+config['EXPERIMENT']['name']+config['EXTENSION']['output'])
@@ -117,4 +124,4 @@ if __name__ == "__main__":
     # Files are diarized one by one
     for idx,showName in enumerate(showNameList):
         print('\nProcessing file',idx+1,'/',len(showNameList))
-        runDiarization(showName,config)
+        runDiarization(os.path.splitext(os.path.basename(showName))[0],config)
